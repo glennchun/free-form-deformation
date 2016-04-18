@@ -35,6 +35,7 @@
             var smooth_verts_undeformed = [];
             var model_index = 0;
             var model_scale;
+            var model_opacity = 0.7;
             
             // FFD: control points of a lattice
             var ffd = new FFD();
@@ -284,7 +285,7 @@
                     'Model: ' + dropdown + ' <a href="#" onclick="nextModel(); return false;">next</a>' +
                     // Show/change the subdivision level.
                     ' (Subdivision level: <input type="button" onclick="nextSubdivisionLevel( -1 );" value="-" /> ' +
-                    subd_level + ' <input type="button" onclick="nextSubdivisionLevel( 1 );" value="+" />' +
+                    subd_level + ' <input type="button" onclick="nextSubdivisionLevel( 1 );" value="+" />' +                    
                     // Show the vertex count.
                     ') (Vertices: ' + orig_geom.vertices.length + '->' + smooth_geom.vertices.length +
                     // Show the face count.
@@ -367,7 +368,7 @@
 
                 // Mesh for the smooth model
                 var smooth_materials = [
-                    new THREE.MeshPhongMaterial( { color: 0xffffff, shading: THREE.FlatShading, vertexColors: THREE.VertexColors, shininess: 0 } ),
+                    new THREE.MeshPhongMaterial( { color: 0xffffff, opacity: model_opacity, transparent: true, shading: THREE.FlatShading, vertexColors: THREE.VertexColors, shininess: 0 } ),
                     new THREE.MeshBasicMaterial( { color: 0x405040, wireframe: true, opacity: 0.8, transparent: true } )
                 ];
                 smooth_mesh = THREE.SceneUtils.createMultiMaterialObject( smooth_geom, smooth_materials );
