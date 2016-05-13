@@ -5,6 +5,10 @@
 
 function FFD()
 {
+    ///////////////////////////////////////////////////////////////////////////
+    // Privileged members
+    ///////////////////////////////////////////////////////////////////////////
+    
     // Returns the bounding box of the undeformed lattice.
     this.getBoundingBox = function() { return mBBox; }
 
@@ -60,13 +64,6 @@ function FFD()
                 }
             }
         }
-    };
-
-    // Evaluates the volume at the given point in world space.
-    this.evalWorld = function( world_pt )
-    {       
-        var param = this.convertToParam( world_pt );
-        return this.evalTrivariate( param.x, param.y, param.z );
     };
 
     // Evaluates the volume at (s, t, u) parameters
@@ -179,4 +176,15 @@ function FFD()
 		var coeff = facto( n ) / ( facto( k ) * facto( n - k ) );
 		return coeff * Math.pow( 1 - u, n - k ) * Math.pow( u, k );
     };
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Public members
+///////////////////////////////////////////////////////////////////////////
+
+// Evaluates the volume at the given point in world space.
+FFD.prototype.evalWorld = function( world_pt )
+{       
+    var param = this.convertToParam( world_pt );
+    return this.evalTrivariate( param.x, param.y, param.z );
 }
