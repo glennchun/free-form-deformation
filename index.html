@@ -19,7 +19,6 @@
         <script src="threejs/three.js"></script>
         <script src="threejs/OrbitControls.js"></script>
         <script src="threejs/TransformControls.js"></script>
-        <script src="threejs/DragControls.js"></script>
         <script src="threejs/SubdivisionModifier.js"></script>
         <script src="threejs/ShadowMaterial.js"></script>
         <script src="ffd.js"></script>
@@ -35,7 +34,6 @@
             var smooth_verts_undeformed = [];
             var model_index = 0;
             var model_scale;
-            var model_opacity = 0.7;
             
             // FFD: control points of a lattice
             var ffd = new FFD();
@@ -45,6 +43,7 @@
             var ctrl_pt_geom = new THREE.SphereGeometry( 5 );
             var ctrl_pt_material = new THREE.MeshLambertMaterial( { color: 0x4d4dff } );
             var ctrl_pt_meshes = [];
+			var ctrl_pt_mesh_selected = null;
             var lattice_lines = [];
             var lattice_line_material = new THREE.LineBasicMaterial( { color: 0x4d4dff } );
 
@@ -57,6 +56,9 @@
             var eval_pts_geom = new THREE.Geometry();
             var eval_pts_mesh;
             var show_eval_pts_checked = false;
+
+            var raycaster = new THREE.Raycaster();
+			var mouse = new THREE.Vector2();
 
             // Create new object by parameters
             var createSomething = function( klass, args )
@@ -149,72 +151,23 @@
                 renderer.setPixelRatio( window.devicePixelRatio );
                 renderer.setSize( window.innerWidth, window.innerHeight );
                 container.appendChild( renderer.domElement );
+                renderer.domElement.addEventListener( 'mousemove', onDocumentMouseMove, false );
+				renderer.domElement.addEventListener( 'mousedown', onDocumentMouseDown, false );
 
                 // Orbit controls
                 orbit_ctrl = new THREE.OrbitControls( camera, renderer.domElement );
                 orbit_ctrl.damping = 0.2;
                 orbit_ctrl.addEventListener( 'change', render );
 
-                orbit_ctrl.addEventListener( 'start', function() {
-                    cancelHideTransform();
-                } );
-
-                orbit_ctrl.addEventListener( 'end', function() {
-                    delayHideTransform();
-                } );
-
                 // Transform control (a triad)
                 trfm_ctrl = new THREE.TransformControls( camera, renderer.domElement );
                 trfm_ctrl.addEventListener( 'change', render );
                 scene.add( trfm_ctrl );
 
-                trfm_ctrl.addEventListener( 'change', function( e ) {
-                    cancelHideTransform();
-                } );
-
-                trfm_ctrl.addEventListener( 'mouseDown', function( e ) {
-                    cancelHideTransform();
-                } );
-
-                trfm_ctrl.addEventListener( 'mouseUp', function( e ) {
-                    delayHideTransform();
-                } );
-
                 trfm_ctrl.addEventListener( 'objectChange', function( e ) {
                     updateLattice();
                     deform();
                 } );
-
-                // Drag control: We're dragging the mesh of a control point of the lattice.
-                var drag_ctrl = new THREE.DragControls( camera, ctrl_pt_meshes, renderer.domElement );
-
-                drag_ctrl.on( 'hoveron', function( e ) {
-                    trfm_ctrl.attach( e.object );
-                    cancelHideTransform(); // *
-                } )
-
-                drag_ctrl.on( 'hoveroff', function( e ) {
-                    if ( e )
-                        delayHideTransform();
-                } )
-
-                // Hiding the transform control.
-                var hiding;
-
-                function delayHideTransform() {
-                    cancelHideTransform();
-                    hideTransform();
-                }
-
-                function hideTransform() {
-                    // Make the trid disappear after 2 sec.
-                    hiding = setTimeout( function() { trfm_ctrl.detach( trfm_ctrl.object ); }, 2000 );
-                }
-
-                function cancelHideTransform() {
-                    if ( hiding )
-                        clearTimeout( hiding );
-                }
 
                 window.addEventListener( 'resize', onWindowResize, false );
 
@@ -229,6 +182,54 @@
 
                 renderer.setSize( window.innerWidth, window.innerHeight );
             }
+
+			function onDocumentMouseMove( event )
+            {
+				event.preventDefault();
+				mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+				mouse.y = -( event.clientY / window.innerHeight ) * 2 + 1;
+				raycaster.setFromCamera( mouse, camera );
+				var intersects = raycaster.intersectObjects( ctrl_pt_meshes );
+                // If the mouse cursor is hovering over a new control point...
+				if ( intersects.length > 0 && ctrl_pt_mesh_selected != intersects[ 0 ].object )
+                {
+                    // Temporarily change the cursor shape to a fingering cursor.
+   					container.style.cursor = 'pointer';
+				}
+                else
+                {
+					container.style.cursor = 'auto';
+				}
+			}
+
+			function onDocumentMouseDown( event )
+            {
+				event.preventDefault();
+                mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+				mouse.y = -( event.clientY / window.innerHeight ) * 2 + 1;
+				raycaster.setFromCamera( mouse, camera );
+				var intersects = raycaster.intersectObjects( ctrl_pt_meshes );
+                // If a new control point is selected...
+				if ( intersects.length > 0 && ctrl_pt_mesh_selected != intersects[ 0 ].object )
+                {
+                    // Temporarily disable the orbit control. This prevents the user from
+                    // getting surprised or annoyed by the scene rotation as soon as a new
+                    // control point is selected. 
+                    orbit_ctrl.enabled = false;
+                    // If a control point was selected before, detach it from the transform control.
+                    if( ctrl_pt_mesh_selected )
+                        trfm_ctrl.detach( trfm_ctrl.object );
+                    // Remember the new selection to avoid reselecting the same one.
+                    ctrl_pt_mesh_selected = intersects[ 0 ].object;
+                    // Attach the newly selected control point to the transform control.
+                    trfm_ctrl.attach( ctrl_pt_mesh_selected );
+                }
+                else
+                {
+                    // Enable the orbit control so that the user can pan/rotate/zoom. 
+                    orbit_ctrl.enabled = true;
+                }
+			}
 
             function animate()
             {
@@ -285,7 +286,7 @@
                     'Model: ' + dropdown + ' <a href="#" onclick="nextModel(); return false;">next</a>' +
                     // Show/change the subdivision level.
                     ' (Subdivision level: <input type="button" onclick="nextSubdivisionLevel( -1 );" value="-" /> ' +
-                    subd_level + ' <input type="button" onclick="nextSubdivisionLevel( 1 );" value="+" />' +                    
+                    subd_level + ' <input type="button" onclick="nextSubdivisionLevel( 1 );" value="+" />' +
                     // Show the vertex count.
                     ') (Vertices: ' + orig_geom.vertices.length + '->' + smooth_geom.vertices.length +
                     // Show the face count.
@@ -368,7 +369,7 @@
 
                 // Mesh for the smooth model
                 var smooth_materials = [
-                    new THREE.MeshPhongMaterial( { color: 0xffffff, opacity: model_opacity, transparent: true, shading: THREE.FlatShading, vertexColors: THREE.VertexColors, shininess: 0 } ),
+                    new THREE.MeshPhongMaterial( { color: 0xffffff, shading: THREE.FlatShading, vertexColors: THREE.VertexColors, shininess: 0 } ),
                     new THREE.MeshBasicMaterial( { color: 0x405040, wireframe: true, opacity: 0.8, transparent: true } )
                 ];
                 smooth_mesh = THREE.SceneUtils.createMultiMaterialObject( smooth_geom, smooth_materials );
