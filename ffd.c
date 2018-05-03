@@ -18,23 +18,23 @@ int mCtrlPtCounts[ 3 ];
 
 // Total number of control points.
 // Hard-coded for WebAssembly experiment.
-int mTotalCtrlPtCount = 125;
+int mTotalCtrlPtCount = 27;
 
 // S/T/U axes.
 double mAxes[ 3 ][ 3 ];
 
 // Positions of all control points.
-// 125: Hard-coded for WebAssembly experiment.
-double mCtrlPts[ 125 ][ 3 ];
+// 27: Hard-coded for WebAssembly experiment.
+double mCtrlPts[ 27 ][ 3 ];
 
-// The number of vertices of TorusKnotGeometry model when subdivision level is 3.
-const int mModelVertCount = 32768;
-double mModelVertsX[ 32768 ];
-double mModelVertsY[ 32768 ];
-double mModelVertsZ[ 32768 ];
-double mModelVertsUndeformedX[ 32768 ];
-double mModelVertsUndeformedY[ 32768 ];
-double mModelVertsUndeformedZ[ 32768 ];
+// The number of vertices of TorusKnotGeometry model when subdivision level is 1.
+const int mModelVertCount = 2048;
+double mModelVertsX[ 2048 ];
+double mModelVertsY[ 2048 ];
+double mModelVertsZ[ 2048 ];
+double mModelVertsUndeformedX[ 2048 ];
+double mModelVertsUndeformedY[ 2048 ];
+double mModelVertsUndeformedZ[ 2048 ];
 
 // On-volume points
 const int mVolumeSpanCount[ 3 ] = { 16, 16, 16 };

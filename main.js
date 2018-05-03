@@ -13,7 +13,7 @@ const MIN_SUBD_LEVEL = 0;
 const MAX_SUBD_LEVEL = 4;
 
 // Hard-coded for WebAssembly experiment.
-var subd_level = 3;
+var subd_level = 1;
 
 var orig_geom, smooth_geom;
 const model_scale = 3;
@@ -28,8 +28,8 @@ const MIN_SPAN_COUNT = 1;
 const MAX_SPAN_COUNT = 8;
 
 // Hard-coded for WebAssembly experiment.
-var span_counts = [4, 4, 4];
-var ctrlPtCount = [5, 5, 5];
+var span_counts = [2, 2, 2];
+var ctrlPtCount = [3, 3, 3];
 var totalCtrlPtCount = ctrlPtCount[0] * ctrlPtCount[1] * ctrlPtCount[2];
 
 const ctrl_pt_geom = new THREE.SphereGeometry(5);
@@ -231,10 +231,12 @@ function addModel() {
 	subd_modifier.modify(smooth_geom);
 
 	const modelVertCount = smooth_geom.vertices.length;
+	
 	// Create linear memory for model vertices by using the shared memory in the WASM module.
 	modelVertXMemory = new Float64Array(wasmInstance.exports.memory.buffer, wasmInstance.exports.dataModelVertsX(), modelVertCount);
 	modelVertYMemory = new Float64Array(wasmInstance.exports.memory.buffer, wasmInstance.exports.dataModelVertsY(), modelVertCount);
 	modelVertZMemory = new Float64Array(wasmInstance.exports.memory.buffer, wasmInstance.exports.dataModelVertsZ(), modelVertCount);
+	
 	// Copy 3D points from smooth_geom.vertices to the linear memory.
 	for (let i = 0; i < modelVertCount; i++) {
 		let vert_pt = smooth_geom.vertices[i];
@@ -496,17 +498,11 @@ function updateLattice() {
 function deform() {
 	if (wasmInstance == undefined)
 		return;
-
-	// Update the model vertices.
-	// Orignal JS code:
-	//for (i = 0; i < smooth_geom.vertices.length; i++) {
-	//	var eval_pt = ffd.evalWorld(smooth_verts_undeformed[i]);
-	//	if (eval_pt.equals(smooth_geom.vertices[i]))
-	//		continue;
-	//	smooth_geom.vertices[i].copy(eval_pt);
-	//}
-	// Using WASM:
+	
+	// Call the C function.
 	wasmInstance.exports.deformModelVerts();
+
+	// Copy 3D point data from the shared memory to Three.js vertices.
 	for (i = 0; i < smooth_geom.vertices.length; i++) {
 		smooth_geom.vertices[i].x = modelVertXMemory[i];
 		smooth_geom.vertices[i].y = modelVertYMemory[i];
@@ -517,31 +513,11 @@ function deform() {
 
 	// Update the mesh for evaluated points.
 	if (show_eval_pts.checked) {
-		// Orignal JS code:
-		//var multipliers = new THREE.Vector3(
-		//		1 / eval_pt_spans.x,
-		//		1 / eval_pt_spans.y,
-		//		1 / eval_pt_spans.z);
-		//var mesh_vert;
-		//var mesh_vert_counter = 0;
-		//for (var i = 0; i < eval_pt_counts.x; i++) {
-		//	var s = i * multipliers.x;
-		//	for (var j = 0; j < eval_pt_counts.y; j++) {
-		//		var t = j * multipliers.y;
-		//		for (var k = 0; k < eval_pt_counts.z; k++) {
-		//			var u = k * multipliers.z;
-		//			var eval_pt = ffd.evalTrivariate(s, t, u);
 
-		//			mesh_vert = eval_pts_mesh.geometry.vertices[mesh_vert_counter++];
-
-		//			if (eval_pt.equals(mesh_vert))
-		//				continue;
-		//			mesh_vert.copy(eval_pt);
-		//		}
-		//	}
-		//}
-		// Using WASM:
+		// Call the C function.
 		wasmInstance.exports.evalVolumePoints();
+
+		// Copy 3D point data from the shared memory to Three.js vertices.
 		for (i = 0; i < eval_pts_mesh.geometry.vertices.length; i++) {
 			eval_pts_mesh.geometry.vertices[i].x = volumePointXMemory[i];
 			eval_pts_mesh.geometry.vertices[i].y = volumePointYMemory[i];
@@ -560,5 +536,4 @@ function deform() {
 
 	init();
 	animate();
-
 })();
